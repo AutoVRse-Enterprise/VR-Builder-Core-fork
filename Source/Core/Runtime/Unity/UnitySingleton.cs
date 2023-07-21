@@ -42,8 +42,11 @@ namespace VRBuilder.Unity
                     {
                         GameObject g = new GameObject();
                         g.name = "Singleton_ofType_" + typeof(T).ToString();
-                        DontDestroyOnLoad(g);
-                        instance =  g.AddComponent<T>();
+                        if (Application.isPlaying)
+                        {
+                            DontDestroyOnLoad(g);
+                        }
+                        instance = g.AddComponent<T>();
                     }
                 }
                 return instance;
@@ -68,7 +71,8 @@ namespace VRBuilder.Unity
                 {
                     Destroy(this);
                     Debug.LogWarningFormat("An instance of the singleton {0} already exists.", typeof(T).Name);
-                } else
+                }
+                else
                 {
                     DontDestroyOnLoad(instance);
                 }
