@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using VRBuilder.Core.Configuration;
 using VRBuilder.Core.Runtime.Utils;
@@ -23,15 +23,33 @@ namespace VRBuilder.TextToSpeech
         public string Language = "En";
 
         /// <summary>
-        /// Voice that should be used.
+        /// Voice that should be used for English.
         /// </summary>
         /// <remarks>It depends on the chosen provider.</remarks>
         public string Voice = "Male";
 
         /// <summary>
+        /// Voice that should be used for Hindi
+        /// </summary>
+        /// <remarks>It depends on the chosen provider.</remarks>
+        public string HindiVoice = "Hindi - Madhur";
+
+        /// <summary>
+        /// Voice that should be used for Hindi
+        /// </summary>
+        /// <remarks>It depends on the chosen provider.</remarks>
+        public string TamilVoice = "Male";
+
+        /// <summary>
         /// StreamingAsset directory name which is used to load/save audio files.
         /// </summary>
         public string StreamingAssetCacheDirectoryName = "TextToSpeech";
+
+        
+        /// <summary>
+        /// Used as base URL in case if API provider
+        /// </summary>
+        public string BaseURL;
 
         /// <summary>
         /// Used to authenticate at the provider, if required.

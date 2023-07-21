@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 using VRBuilder.Core.IO;
 using UnityEngine;
 using System.IO;
+#if UNITY_EDITOR
+using static UnityEditor.PlayerSettings.Switch;
+#endif
 
 namespace VRBuilder.TextToSpeech
 {
@@ -12,7 +15,7 @@ namespace VRBuilder.TextToSpeech
     /// If there is no compatible file found, will download the file from the given
     /// fallback TextToSpeechProvider.
     /// </summary>
-    public class FileTextToSpeechProvider : ITextToSpeechProvider
+    public class FileTextToSpeechProvider : IVRBTextToSpeechProvider
     {
         protected TextToSpeechConfiguration Configuration;
 
@@ -48,6 +51,72 @@ namespace VRBuilder.TextToSpeech
             }
 
             return audioClip;
+        }
+
+        public async Task<AudioClip> ConvertTextToSpeechForLanguage(string text, string language)
+        {
+            string filename = Configuration.GetUniqueTextToSpeechFilenameForLanguage(text,language);
+            string filePath = GetPathToFile(filename);
+            AudioClip audioClip = null;
+
+            if (await IsFileCached(filePath))
+            {
+                byte[] bytes = await GetCachedFile(filePath);
+                float[] sound = TextToSpeechUtils.ShortsInByteArrayToFloats(bytes);
+
+                audioClip = AudioClip.Create(text, channels: 1, frequency: 48000, lengthSamples: sound.Length, stream: false);
+                audioClip.SetData(sound, 0);
+            }
+            else
+            {
+                Debug.Log($"No audio cached for TTS string. Audio will be generated in real time.");
+                IVRBTextToSpeechProvider vRBTextToSpeechProvider = (IVRBTextToSpeechProvider)TextToSpeechProviderFactory.Instance.CreateProvider();
+                audioClip = await vRBTextToSpeechProvider.ConvertTextToSpeechForLanguage(text, language);
+            }
+
+            if (audioClip == null)
+            {
+                throw new CouldNotLoadAudioFileException($"AudioClip is null for text '{text}'");
+            }
+
+            return audioClip;
+        }
+
+        public async Task<AudioClip[]> ConvertMultipleTextToSpeech(string[] texts, string[] languages)
+        {
+            string[] filenames = new string[5];
+            string[] filePaths = new string[5];
+            AudioClip[] audioClips = new AudioClip[5];
+            for (int i = 0; i < languages.Length; i++)
+            {
+                filenames[i] = Configuration.GetUniqueTextToSpeechFilenameForLanguage(texts[i], languages[i]);
+                filePaths[i] = GetPathToFile(filenames[i]);
+                audioClips[i] = null;
+
+                if (await IsFileCached(filePaths[i]))
+                {
+                    byte[] bytes = await GetCachedFile(filePaths[i]);
+                    float[] sound = TextToSpeechUtils.ShortsInByteArrayToFloats(bytes);
+
+                    audioClips[i] = AudioClip.Create(texts[i], channels: 1, frequency: 48000, lengthSamples: sound.Length, stream: false);
+                    audioClips[i].SetData(sound, 0);
+                }
+                else
+                {
+                    Debug.Log($"No audio cached for TTS string. Audio will be generated in real time.");
+                    IVRBTextToSpeechProvider vRBTextToSpeechProvider = (IVRBTextToSpeechProvider)TextToSpeechProviderFactory.Instance.CreateProvider();
+                    audioClips = await vRBTextToSpeechProvider.ConvertMultipleTextToSpeech(texts, languages);
+                }
+
+                if (audioClips[i] == null)
+                {
+                    throw new CouldNotLoadAudioFileException($"AudioClip is null for text '{texts[i]}'");
+                }
+            }
+            
+
+            return audioClips;
+
         }
 
         /// <inheritdoc/>

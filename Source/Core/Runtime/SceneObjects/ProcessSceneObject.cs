@@ -59,7 +59,8 @@ namespace VRBuilder.Core.SceneObjects
 
         private bool IsRegistered
         {
-            get { return RuntimeConfigurator.Configuration.SceneObjectRegistry.ContainsGuid(Guid); }
+            //get { return RuntimeConfigurator.Configuration.SceneObjectRegistry.ContainsGuid(Guid); }
+            get { return RuntimeConfigurator.Configuration.SceneObjectRegistry.ContainsName(UniqueName); }
         }
 
         [SerializeField]
@@ -121,10 +122,10 @@ namespace VRBuilder.Core.SceneObjects
 
         private void OnDestroy()
         {
-            if (RuntimeConfigurator.Exists)
+            /*if (RuntimeConfigurator.Exists)
             {
                 RuntimeConfigurator.Configuration.SceneObjectRegistry.Unregister(this);
-            }
+            }*/
         }
 
         public bool CheckHasProperty<T>() where T : ISceneObjectProperty

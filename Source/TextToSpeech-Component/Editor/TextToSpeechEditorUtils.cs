@@ -1,11 +1,13 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Codice.Client.Commands;
 using UnityEditor;
 using UnityEngine;
 using VRBuilder.Core;
 using VRBuilder.Core.Configuration;
+using VRBuilder.Core.Internationalization;
 using VRBuilder.TextToSpeech;
 using VRBuilder.TextToSpeech.Audio;
 
@@ -21,10 +23,42 @@ namespace VRBuilder.Editor.TextToSpeech
             string filename = configuration.GetUniqueTextToSpeechFilename(text);
             string filePath = $"{configuration.StreamingAssetCacheDirectoryName}/{filename}";
 
+            //Debug.Log("Caching Audio clip with :" + filename + " " + filePath);
+
             ITextToSpeechProvider provider = TextToSpeechProviderFactory.Instance.CreateProvider(configuration);
+
+            //Debug.Log("Found Provider"+ provider.ToString());
+
             AudioClip audioClip = await provider.ConvertTextToSpeech(text);
 
             CacheAudio(audioClip, filePath, new NAudioConverter());
+        }
+
+        /// <summary>
+        /// Generates TTS audio and creates a file.
+        /// </summary>       
+        public static async Task CacheVRBAudioClip(string[] texts, TextToSpeechConfiguration configuration)
+        {
+
+            IVRBTextToSpeechProvider VRBprovider = (IVRBTextToSpeechProvider)TextToSpeechProviderFactory.Instance.CreateProvider(configuration);
+
+            Debug.Log("Found Provider"+ VRBprovider.ToString());
+
+            AudioClip[] audioClips;
+            string[] langs = new string[] { "en", "hi", "ta" };
+            audioClips = await VRBprovider.ConvertMultipleTextToSpeech(texts, langs);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                string filename = configuration.GetUniqueTextToSpeechFilenameForLanguage(texts[i], langs[i]);
+                string filePath = $"{configuration.StreamingAssetCacheDirectoryName}/{filename}";
+
+                //Debug.Log("Caching Audio clip with :" + filename + " " + filePath);
+
+                if (audioClips[i] != null)
+                {
+                    CacheAudio(audioClips[i], filePath, new NAudioConverter());
+                }
+            }
         }
 
         /// <summary>
@@ -73,6 +107,41 @@ namespace VRBuilder.Editor.TextToSpeech
             return validClips.Length;
         }
 
+        /// <summary>
+        /// Generates files for all <see cref="TextToSpeechAudio"/> passed.
+        /// </summary>        
+        public static async Task<int> CacheVRBTextToSpeechClips(IEnumerable<IVRBTextToSpeechContent> clips)
+        {
+            TextToSpeechConfiguration configuration = RuntimeConfigurator.Configuration.GetTextToSpeechConfiguration();
+
+            IVRBTextToSpeechContent[] validClips = clips.Where(clip => string.IsNullOrEmpty(clip.EnglishText) == false || string.IsNullOrEmpty(clip.HindiText) == false || string.IsNullOrEmpty(clip.TamilText) == false).ToArray();
+
+            for(int i = 0; i < validClips.Length; i++ )
+            {
+                string[] textClips = new string[3];
+                for (int j = 0; j < 3; j++)
+                {
+                    switch (j)
+                    {
+                        case 0:
+                            textClips[j] = validClips[i].EnglishText;
+                            break;
+                        case 1:
+                            textClips[j] = validClips[i].HindiText;
+                            break;
+                        case 2:
+                            textClips[j] = validClips[i].TamilText;
+                            break;
+                    }
+                }
+                EditorUtility.DisplayProgressBar($"Generating audio with {configuration.Provider}", $"{i + 1}/{validClips.Length}: {validClips[i].HindiText}", (float)i / validClips.Length);
+                await CacheVRBAudioClip(textClips, configuration);
+            }
+
+            EditorUtility.ClearProgressBar();
+            return validClips.Length;
+        }
+
         public static async void GenerateTextToSpeechForAllProcesses()
         {
             IEnumerable<string> processNames = ProcessAssetUtils.GetAllProcesses();
@@ -91,6 +160,15 @@ namespace VRBuilder.Editor.TextToSpeech
                         filesGenerated = true;
                         int clips = await CacheTextToSpeechClips(tts);
                         Debug.Log($"Generated {clips} audio files for process '{process.Data.Name}.'");
+                    }
+
+                    IEnumerable<IVRBTextToSpeechContent> VRBtts = EditorReflectionUtils.GetNestedPropertiesFromData<IVRBTextToSpeechContent>(process.Data).Where(content => content.IsCached == false && (string.IsNullOrEmpty(content.EnglishText) == false || string.IsNullOrEmpty(content.HindiText) == false || string.IsNullOrEmpty(content.TamilText)== false));
+
+                    if (VRBtts.Count() > 0)
+                    {
+                        filesGenerated = true;
+                        int clips = await CacheVRBTextToSpeechClips(VRBtts);
+                        Debug.Log($"Generated {clips} audio files for process '{process.Data.Name}.' using VRB IVRBTTS content");
                     }
                 }
             }

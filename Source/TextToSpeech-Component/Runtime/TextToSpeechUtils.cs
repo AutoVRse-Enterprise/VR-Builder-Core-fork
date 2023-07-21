@@ -14,6 +14,15 @@ namespace VRBuilder.TextToSpeech
             string hash = string.Format("{0}_{1}", configuration.Voice, text);
             return string.Format(@"TTS_{0}_{1}_{2}.{3}", configuration.Provider, LanguageSettings.Instance.ActiveOrDefaultLanguage, GetMd5Hash(hash).Replace("-", ""), format);
         }
+
+        /// <summary>
+        /// Returns filename which uniquly identifies the audio by Backend, Language, Voice and also the text.
+        /// </summary>
+        public static string GetUniqueTextToSpeechFilenameForLanguage(this TextToSpeechConfiguration configuration, string text,string language, string format = "wav")
+        {
+            string hash = string.Format("{0}_{1}", configuration.Voice, text);
+            return string.Format(@"TTS_{0}_{1}_{2}.{3}", configuration.Provider,language, GetMd5Hash(hash).Replace("-", ""), format);
+        }
         
         /// <summary>
         /// The result comes in byte array, but there are actually short values inside (ranged from short.Min to short.Max).
